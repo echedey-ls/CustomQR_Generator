@@ -13,8 +13,7 @@ import qrcode
 
 from PIL import Image
 
-from os import mkdir, listdir
-from os.path import exists, isfile, join
+from os.path import exists
 
 from datetime import datetime
 
@@ -158,12 +157,14 @@ class QRApp_config:
         self._path = path
         if exists(self._path):
             self.readConfig()
+            self._cf['logo-history'] = self.sanitizeHistory()
         else:
             self.createVoidConfig()
     def createVoidConfig(self) -> None: # Creates a default configuration file
         self._cf = {'logo-history': []}
         self.saveConfig()
     def saveConfig(self) -> None: # Saves current config to the TOML config file
+        self._cf['logo-history'] = self.sanitizeHistory()
         with open(self._path, 'wb') as cfFile:
             tomli_w.dump(self._cf, cfFile)
     def readConfig(self) -> None: # Gets config dict from TOML file. If not valid, new config is created
@@ -171,7 +172,7 @@ class QRApp_config:
             self._cf = tomli.load(cfFile)
         if 'logo-history' not in self._cf.keys():
             self.createVoidConfig()
-    def sanitizeHistory(self) -> array: # Checks all paths do exist, else they are deleted
+    def sanitizeHistory(self) -> list: # Checks all paths do exist, else they are deleted
         # Might be considered unwanted behaviour, but how do I put the icons then?
         return [logoPath for logoPath in self._cf['logo-history'] if exists(logoPath)] 
     def addToHistory(self, path: str) -> None: # When we add a path, it is the last one used so insert at index 0
