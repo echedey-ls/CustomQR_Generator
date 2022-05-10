@@ -8,47 +8,38 @@ Errors:
 
 import sys
 import errno
-import configparser as conf
+import tomli, tomli_w
 import qrcode
 
 from PIL import Image
 
-from os import mkdir, listdir, getcwd, times
-from os.path import exists, isfile, join, getmtime
+from os import mkdir, listdir
+from os.path import exists, isfile, join
 
 from datetime import datetime
 
 from PyQt6.QtCore import Qt, QSize
 from PyQt6.QtWidgets import QApplication, QWidget, QGridLayout, QHBoxLayout, QVBoxLayout, QLineEdit, QButtonGroup, QPushButton, QToolButton, QLabel
-from PyQt6.QtGui import QPixmap, QIcon, QImage
+from PyQt6.QtGui import QPixmap, QIcon, QImage, QCloseEvent
 
 class customQR_widgetApp(QWidget):
     paths = {
         'usedLogos': 'saved',
-        'config': 'qrGenerator.ini'
+        'config': 'qrGenConfig.toml'
     }
     usedLogos = []
 
     def __init__(self):
         super().__init__()
+        self.cf = QRApp_config(self.paths['config'])
         self.initEnv()
         self.initUI()
-        self.config = conf.ConfigParser()
         return
 
     def initEnv(self):
-        usedLogosDir = self.paths['usedLogos']
-        if not exists(usedLogosDir):
-            mkdir(usedLogosDir)
-
-        else:
-            for entry in listdir(usedLogosDir):
-                if isfile(path := join(usedLogosDir, entry)) and entry.endswith(('.bmp', '.png', '.jpg', '.jpeg')):
-                    self.usedLogos.append(path)
-
-        if exists(cf := self.paths['config']):
-            self.config.read(cf)
+        self.usedLogos = self.cf.getConf()['logo-history']
         return
+
     
     def initUI(self):
         self.setWindowTitle("QR with logos generator")
@@ -69,12 +60,13 @@ class customQR_widgetApp(QWidget):
 
         uriLabel = QLabel()
         uriLabel.setTextFormat(Qt.TextFormat.PlainText)
+        uriLabel.setAlignment(Qt.AlignmentFlag.AlignRight)
         uriLabel.setText('Content')
         self.qrContent = QLineEdit()
 
         logoLabel = QLabel()
         logoLabel.setTextFormat(Qt.TextFormat.PlainText)
-        logoLabel.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        logoLabel.setAlignment(Qt.AlignmentFlag.AlignRight)
         logoLabel.setText('Logo path')
         self.logoInput = QLineEdit()
 
@@ -137,22 +129,59 @@ class customQR_widgetApp(QWidget):
         return
 
     def doQRPixmap(self):
-        if self.qrContent.text() == '':
+        qrContent= self.qrContent.text()
+        logoPath = self.logoInput.text()
+        if  qrContent == '':
             self.qr = QImage(QSize(1000,1000), QImage.Format.Format_ARGB32)
             self.qr.fill(Qt.GlobalColor.gray)
-        else:
+        elif exists(logoPath):
             # This workaround is thanks to Win10
             # See https://stackoverflow.com/questions/34697559/pil-image-to-qpixmap-conversion-issue
-            im = makeCustomQR(data=self.qrContent.text(), imagePath=self.logoInput.text())
+            im = makeCustomQR(data=qrContent, imagePath=logoPath)
             im2 = im.convert("RGBA")
             data = im2.tobytes("raw", "BGRA")
             self.qr = QImage(data, im.width, im.height, QImage.Format.Format_ARGB32)
+            self.cf.addToHistory(logoPath)
         self.outputImg.setPixmap(QPixmap.fromImage(self.qr.scaled(QSize( 300, 300))))
         return
     
     def saveQR(self):
         timestamp = datetime.now().replace(microsecond=0).isoformat()+'.png'
         self.qr.save(timestamp.replace(':','-')) # Replace ':' so it can be a valid filename
+    
+    def closeEvent(self, a0: QCloseEvent) -> None:
+        self.cf.saveConfig()
+        return super().closeEvent(a0)
+
+class QRApp_config:
+    def __init__(self, path: str) -> None:
+        self._path = path
+        if exists(self._path):
+            self.readConfig()
+        else:
+            self.createVoidConfig()
+    def createVoidConfig(self) -> None: # Creates a default configuration file
+        self._cf = {'logo-history': []}
+        self.saveConfig()
+    def saveConfig(self) -> None: # Saves current config to the TOML config file
+        with open(self._path, 'wb') as cfFile:
+            tomli_w.dump(self._cf, cfFile)
+    def readConfig(self) -> None: # Gets config dict from TOML file. If not valid, new config is created
+        with open(self._path, 'rb') as cfFile:
+            self._cf = tomli.load(cfFile)
+        if 'logo-history' not in self._cf.keys():
+            self.createVoidConfig()
+    def sanitizeHistory(self) -> array: # Checks all paths do exist, else they are deleted
+        # Might be considered unwanted behaviour, but how do I put the icons then?
+        return [logoPath for logoPath in self._cf['logo-history'] if exists(logoPath)] 
+    def addToHistory(self, path: str) -> None: # When we add a path, it is the last one used so insert at index 0
+        history = self._cf['logo-history']
+        if path in history:
+            history.remove(path)
+        history.insert(0, path)
+        self._cf['logo-history'] = history
+    def getConf(self) -> dict: # Accessor for the config dict
+        return self._cf
 
 # Wrapper to a function that makes the QR with the logo
 # Copied and modified without shame from https://www.geeksforgeeks.org/how-to-generate-qr-codes-with-a-custom-logo-using-python/
