@@ -1,10 +1,18 @@
 #!/usr/bin/env python
-"""
-Errors:
-    8 - File already exists but algorithm attempted to create.
-    16 - Access error.
-    32 - Could not remove CF file.
-"""
+'''
+Copyright © 2022 Echedey Luis
+This work is free. You can redistribute it and/or modify it under the
+terms of the Do What The Fuck You Want To Public License, Version 2,
+as published by Sam Hocevar. See the COPYING file for more details.
+
+Small graphical solution to make QR codes easily with logos embedded
+'''
+__author__ = "Echedey Luis Álvaerz"
+__copyright__ = "Copyright 2022, Echedey Luis Álvarez"
+__credits__ = ["Echedey Luis Álvarez"]
+__license__ = "WTFPL"
+__version__ = "0.1.0"
+__status__ = "Prototype"
 
 import sys
 import errno
