@@ -133,7 +133,7 @@ class customQR_widgetApp(QWidget):
         if  qrContent == '':
             self.qr = QImage(QSize(1000,1000), QImage.Format.Format_ARGB32)
             self.qr.fill(Qt.GlobalColor.gray)
-        elif exists(logoPath):
+        elif exists(logoPath) or logoPath == '':
             # This workaround is thanks to Win10
             # See https://stackoverflow.com/questions/34697559/pil-image-to-qpixmap-conversion-issue
             im = makeCustomQR(data=qrContent, imagePath=logoPath)
@@ -188,8 +188,6 @@ class QRApp_config:
 # Copied and modified without shame from https://www.geeksforgeeks.org/how-to-generate-qr-codes-with-a-custom-logo-using-python/
 # Credits to pavanpatel3684 @ https://auth.geeksforgeeks.org/user/pavanpatel3684/articles
 def makeCustomQR(data: str, imagePath: str, fgColor='black', bkColor='white', baseWidth=5000, logoPercent=0.3):
-    logo = Image.open(imagePath)
-   
     QRcode = qrcode.QRCode(
         version=None,
         error_correction=qrcode.constants.ERROR_CORRECT_H,
@@ -203,19 +201,20 @@ def makeCustomQR(data: str, imagePath: str, fgColor='black', bkColor='white', ba
 
     QRimg = QRcode.make_image(fill_color=fgColor, back_color=bkColor).convert('RGBA').resize((baseWidth,baseWidth), Image.Resampling.NEAREST)
 
-    # set size of logo
-    logo = logo.resize(
-        (int(QRimg.size[0]*logoPercent),
-        int(QRimg.size[1]*logoPercent)),
-        Image.Resampling.NEAREST
-    ).convert('RGBA')
-
-    # set size of QR code
-    pos = (
-        (QRimg.size[0] - logo.size[0]) // 2,
-        (QRimg.size[1] - logo.size[1]) // 2
-    )
-    QRimg.alpha_composite(logo, pos)
+    if imagePath:
+        logo = Image.open(imagePath)
+        # set size of logo
+        logo = logo.resize(
+            (int(QRimg.size[0]*logoPercent),
+            int(QRimg.size[1]*logoPercent)),
+            Image.Resampling.NEAREST
+        ).convert('RGBA')
+        # set size of QR code
+        pos = (
+            (QRimg.size[0] - logo.size[0]) // 2,
+            (QRimg.size[1] - logo.size[1]) // 2
+        )
+        QRimg.alpha_composite(logo, pos)
 
     return QRimg
 
