@@ -1,0 +1,6 @@
+# App config file
+qrGenConfig.toml
+# Saved Logos, used mostly for testing
+/savedLogos/
+# Generated QRs
+*.png
