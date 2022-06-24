@@ -31,7 +31,7 @@ from PyQt6.QtGui import QPixmap, QIcon, QImage, QCloseEvent
 
 class customQR_widgetApp(QWidget):
     paths = {
-        'usedLogos': 'saved',
+        'usedLogos': 'savedLogos',
         'config': 'qrGenConfig.toml'
     }
     usedLogos = []
@@ -39,14 +39,8 @@ class customQR_widgetApp(QWidget):
     def __init__(self):
         super().__init__()
         self.cf = QRApp_config(self.paths['config'])
-        self.initEnv()
         self.initUI()
         return
-
-    def initEnv(self):
-        self.usedLogos = self.cf.getConf()['logo-history']
-        return
-
     
     def initUI(self):
         self.setWindowTitle("QR with logos generator")
@@ -80,7 +74,7 @@ class customQR_widgetApp(QWidget):
         # Used logos grid
         logosGrid = QGridLayout()
         self.logosButtons = QButtonGroup()
-        for logoEntry in self.usedLogos:
+        for logoEntry in self.cf.getConf()['logo-history']:
             button = QToolButton()
             button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)
             button.setIcon(QIcon(logoEntry))
@@ -165,32 +159,32 @@ class QRApp_config:
         self._path = path
         if exists(self._path):
             self.readConfig()
-            self._cf['logo-history'] = self.sanitizeHistory()
+            self.sanitizeHistory()
         else:
             self.createVoidConfig()
     def createVoidConfig(self) -> None: # Creates a default configuration file
-        self._cf = {'logo-history': []}
+        self.cf = {'logo-history': []}
         self.saveConfig()
     def saveConfig(self) -> None: # Saves current config to the TOML config file
-        self._cf['logo-history'] = self.sanitizeHistory()
+        self.sanitizeHistory()
         with open(self._path, 'wb') as cfFile:
-            tomli_w.dump(self._cf, cfFile)
+            tomli_w.dump(self.cf, cfFile)
     def readConfig(self) -> None: # Gets config dict from TOML file. If not valid, new config is created
         with open(self._path, 'rb') as cfFile:
-            self._cf = tomli.load(cfFile)
-        if 'logo-history' not in self._cf.keys():
+            self.cf = tomli.load(cfFile)
+        if 'logo-history' not in self.cf.keys():
             self.createVoidConfig()
     def sanitizeHistory(self) -> list: # Checks all paths do exist, else they are deleted
         # Might be considered unwanted behaviour, but how do I put the icons then?
-        return [logoPath for logoPath in self._cf['logo-history'] if exists(logoPath)] 
+        self.cf['logo-history'] = [logoPath for logoPath in self.cf['logo-history'] if exists(logoPath)] 
     def addToHistory(self, path: str) -> None: # When we add a path, it is the last one used so insert at index 0
-        history = self._cf['logo-history']
+        history = self.cf['logo-history']
         if path in history:
             history.remove(path)
         history.insert(0, path)
-        self._cf['logo-history'] = history
+        self.cf['logo-history'] = history
     def getConf(self) -> dict: # Accessor for the config dict
-        return self._cf
+        return self.cf
 
 # Wrapper to a function that makes the QR with the logo
 # Copied and modified without shame from https://www.geeksforgeeks.org/how-to-generate-qr-codes-with-a-custom-logo-using-python/
